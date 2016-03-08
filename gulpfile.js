@@ -1,54 +1,39 @@
-var gulp         = require('gulp');
-var connect      = require('gulp-connect');
-var sass         = require('gulp-sass');
-var autoprefixer = require('gulp-autoprefixer');
-var browserify   = require('browserify');
-var babelify     = require('babelify');
-var uglify       = require('gulp-uglify');
-var source       = require('vinyl-source-stream');
-var buffer       = require('vinyl-buffer');
+const gulp = require('gulp');
+const browserify = require('browserify');
+const babelify = require('babelify');
+const source = require('vinyl-source-stream');
+const browserSync = require('browser-sync').create();
 
-var env          = process.env.NODE_ENV || 'development';
+const config = {
+  src: {
+    root: './src',
+    js: 'js',
+  },
+  dist: {
+    root: './dist',
+    js: 'js',
+  },
+};
 
-gulp.task('connect', function() {
-  connect.server({
-    livereload: true
+gulp.task('browser-sync', () => {
+  browserSync.init({
+    server: {
+      baseDir: config.dist.root,
+    },
   });
 });
 
-gulp.task('css', function() {
-  var sassConfig = {};
-
-  if (env === 'development') {
-    sassConfig.sourceComments = 'map';
-  } else {
-    sassConfig.outputStyle = 'compressed';
-  }
-
-  gulp.src('scss/style.scss')
-    .pipe(sass(sassConfig))
-    .pipe(autoprefixer())
-    .pipe(gulp.dest('css'))
-    .pipe(connect.reload());
-});
-
-gulp.task('js', function() {
-  return browserify({
-      entries: './js/app.js',
-      debug: env === 'development'
-    })
-    .transform(babelify)
+gulp.task('js', () => {
+  return browserify(config.src.root + '/' + config.src.js + '/index.js')
+    .transform(babelify, { presets: ['es2015', 'react'] })
     .bundle()
-    .pipe(source('bundle.js'))
-    .pipe(buffer())
-    .pipe(uglify())
-    .pipe(gulp.dest('js'))
-    .pipe(connect.reload());
+    .pipe(source('index.js'))
+    .pipe(gulp.dest(config.dist.root + '/' + config.dist.js))
+    .pipe(browserSync.reload({ stream: true }));
 });
 
-gulp.task('watch', function() {
-  gulp.watch('scss/**/*.scss', ['css']);
-  gulp.watch('js/app.js', ['js']);
+gulp.task('watch', () => {
+  gulp.watch(config.src.root + '/' + config.src.js + '/**/*.js', ['js']);
 });
 
-gulp.task('default', ['css', 'js', 'connect', 'watch']);
+gulp.task('default', ['browser-sync', 'js', 'watch']);
